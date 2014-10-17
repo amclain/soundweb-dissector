@@ -198,17 +198,34 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         soundweb_tree:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
     end
     
-    get_escaped_data(soundweb_tree, fds.command, 1)
+    local command = get_escaped_data(soundweb_tree, fds.command, 1)
     
-    local address_tree = soundweb_tree:add("HiQnet Address")
-    get_escaped_data(address_tree, fds.node, 2)
-    get_escaped_data(address_tree, fds.virtual_device, 1)
-    get_escaped_data(address_tree, fds.object, 3)
+    local address_tree = soundweb_tree:add("HiQnet Address: ")
+    local node = get_escaped_data(address_tree, fds.node, 2)
+    local virtual_device = get_escaped_data(address_tree, fds.virtual_device, 1)
+    local object = get_escaped_data(address_tree, fds.object, 3)
     
-    get_escaped_data(soundweb_tree, fds.state_variable, 2)
+    local state_variable = get_escaped_data(soundweb_tree, fds.state_variable, 2)
     get_escaped_data(soundweb_tree, fds.data, 4)
     get_escaped_data(soundweb_tree, fds.checksum, 1)
     get_escaped_data(soundweb_tree, fds.end_byte, 1)
+    
+    -- Add labels
+    local adr_bytes = ByteArray.new()
+    adr_bytes:append(node)
+    adr_bytes:append(virtual_device)
+    adr_bytes:append(object)
+    
+    local hiqnet_address_text = "0x" .. tostring(adr_bytes)
+    address_tree:append_text(hiqnet_address_text)
+    soundweb_tree:append_text(", HiQnet Address: " .. hiqnet_address_text)
+    table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
+    
+    soundweb_tree:append_text(", SV: 0x" .. tostring(state_variable))
+    table.insert(desc, "SV=0x" .. tostring(state_variable))
+    
+    soundweb_tree:append_text(", Cmd: 0x" .. tostring(command))
+    table.insert(desc, "Cmd=0x" .. tostring(command))
     
     -- Check for valid end byte: 0x02
     if tvb(offset - 1, 1):uint() ~= 0x03 then
@@ -217,7 +234,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
-    pinfo.cols.info = table.concat(desc, "; ")
+    pinfo.cols.info = table.concat(desc, " ")
     -- pinfo.tap_data = tap
 
     -- return offset
