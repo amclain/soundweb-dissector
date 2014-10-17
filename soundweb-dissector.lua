@@ -151,25 +151,34 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     function get_escaped_data(param, len)
         local starting_offset = offset
         local data = ByteArray.new()
-        local byte = 0
+        local byte = nil
+        local do_escape = false
         
         while len > 0 do
-            byte = tvb(offset, 1):uint()
+            do_escape = false
+            byte = tvb(offset, 1)
             
-            if byte == 0x1B then
+            -- Detect escape byte.
+            if byte:uint() == 0x1B then
+                do_escape = true
                 offset = offset + 1
-                byte = tvb(offset, 1):uint() - 0x80
+                byte = tvb(offset, 1)
             end
             
-            data:append(ByteArray.new(byte))
+            data:append(byte:bytes())
+            
+            -- Process escape byte.
+            if do_escape == true then
+                do_escape = false
+                local i = data:len() - 1
+                data:set_index(i, data:get_index(i) - 0x80)
+            end
             
             offset = offset + 1
             len = len - 1
         end
         
-        -- TODO: Figure out how to determine value type.
-        -- soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
-        soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset))
+        soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
         
         return data
     end
