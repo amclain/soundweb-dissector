@@ -6,7 +6,6 @@
 local format   = string.format
 local tostring = tostring
 local tonumber = tonumber
-local sqrt     = math.sqrt
 local pairs    = pairs
 
 -- wireshark API globals
@@ -105,11 +104,8 @@ function soundweb_proto.init(arg1, arg2)
     end
 end
 
-local stream_mechanisms = {}
-
 function soundweb_proto.dissector(tvb, pinfo, tree)
     local offset = 0
-    local rang
     local soundweb_frames
     local tap  = {}
     local desc = {}
@@ -120,6 +116,37 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     tap.messages = 0
     tap.body_bytes = 0
     
+    function get_escaped_data(param, len)
+        local starting_offset = offset
+        local data = ByteArray.new()
+        local byte = 0
+        
+        print(format("starting_offset: %d", offset))
+        
+        while len > 0 do
+            byte = tvb(offset, 1)
+            
+            if byte:uint() == 0x1B then
+                offset = offset + 1
+                byte = tvb(offset, 1)
+                data:append(ByteArray.new(byte:uint() - 0x80))
+            else
+                data:append(byte:bytes())
+            end
+            
+            print(byte)
+            
+            offset = offset + 1
+            len = len - 1
+        end
+        
+        -- TODO: Figure out how to determine value type.
+        -- soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
+        soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset))
+        
+        return data
+    end
+    
     -- print(format("soundweb_proto.dissector: offset:%d len:%d reported_len:%d", offset, tvb:len(), tvb:reported_len()), tvb(offset, 5))
     
     if not soundweb_frames then
@@ -128,20 +155,26 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     
     soundweb_frames:set_text(format("BSS Soundweb London Protocol"))
     
-    soundweb_frames:add(fds.start_byte, tvb(0, 1))
-    soundweb_frames:add(fds.command, tvb(1, 1))
-    soundweb_frames:add(fds.node, tvb(2, 2))
-    soundweb_frames:add(fds.virtual_device, tvb(4, 1))
-    soundweb_frames:add(fds.object, tvb(5, 3))
-    soundweb_frames:add(fds.state_variable, tvb(8, 2))
-    soundweb_frames:add(fds.data, tvb(10, 4))
-    soundweb_frames:add(fds.checksum, tvb(14, 1))
-    soundweb_frames:add(fds.end_byte, tvb(15, 1))
+    get_escaped_data(fds.start_byte, 1)
+    -- --------------------------------------
+    -- TODO: Check for valid start byte: 0x02
+    -- --------------------------------------
+    get_escaped_data(fds.command, 1)
+    get_escaped_data(fds.node, 2)
+    get_escaped_data(fds.virtual_device, 1)
+    get_escaped_data(fds.object, 3)
+    get_escaped_data(fds.state_variable, 2)
+    get_escaped_data(fds.data, 4)
+    get_escaped_data(fds.checksum, 1)
+    get_escaped_data(fds.end_byte, 1)
+    -- -- --------------------------------------
+    -- -- TODO: Check for valid end byte: 0x03
+    -- -- --------------------------------------
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
     pinfo.cols.info = table.concat(desc, "; ")
     -- pinfo.tap_data = tap
-    
+
     -- return offset
 end
