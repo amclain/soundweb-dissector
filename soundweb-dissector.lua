@@ -136,9 +136,59 @@ function soundweb_proto.init(arg1, arg2)
     end
 end
 
+-- SoundwebItem object
+
+SoundwebItem = {}
+SoundwebItem.__index = SoundwebItem
+
+function SoundwebItem.new(param, field_len, tvb, data, starting_offset, ending_offset)
+    local obj = {}
+    setmetatable(obj, SoundwebItem)
+    
+    obj.__param = param
+    obj.__field_len = field_len
+    obj.__tvb = tvb   -- Raw tvb data with escape characters.
+    obj.__data = data -- tvb of unescaped data (processed).
+    obj.__starting_offset = starting_offset
+    obj.__ending_offset = ending_offset
+    
+    return obj
+end
+
+function SoundwebItem:param()
+    return self.__param
+end
+
+function SoundwebItem:tvb()
+    return self.__tvb
+end
+
+function SoundwebItem:data()
+    return self.__data
+end
+
+function SoundwebItem:field_len()
+    return self.__field_len
+end
+
+function SoundwebItem:starting_offset()
+    return self.__starting_offset
+end
+
+function SoundwebItem:ending_offset()
+    return self.__ending_offset
+end
+
+function SoundwebItem:add_to_tree(tree)
+    return tree:add(self:param(), self:tvb(), self:data():uint())
+end
+
+-- End SoundwebItem object
+
 function soundweb_proto.dissector(tvb, pinfo, tree)
     local offset = 0
-    local soundweb_tree
+    local items = {}
+    local trees = {}
     local tap  = {}
     local desc = {}
     
@@ -148,7 +198,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     tap.messages = 0
     tap.body_bytes = 0
     
-    function get_escaped_data(tree, param, len)
+    function get_soundweb_item(param, len)
         local starting_offset = offset
         local data = ByteArray.new()
         local byte = nil
@@ -178,58 +228,61 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             len = len - 1
         end
         
-        tree:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
-        
-        return data
+        return SoundwebItem.new(param, len, tvb(starting_offset, offset - starting_offset), data:tvb()(), starting_offset, offset)
     end
     
     -- print(format("soundweb_proto.dissector: offset:%d len:%d reported_len:%d", offset, tvb:len(), tvb:reported_len()), tvb(offset, 5))
     
-    if not soundweb_tree then
-        soundweb_tree = tree:add(soundweb_proto, tvb())
-    end
+    trees.soundweb = tree:add(soundweb_proto, tvb(), nil, "BSS Soundweb London Protocol")
     
-    soundweb_tree:set_text(format("BSS Soundweb London Protocol"))
-    
-    get_escaped_data(soundweb_tree, fds.start_byte, 1)
+    items.start_byte = get_soundweb_item(fds.start_byte, 1)
+    trees.start_byte = items.start_byte:add_to_tree(trees.soundweb)
     
     -- Check for valid start byte: 0x02
-    if tvb(offset - 1, 1):uint() ~= 0x02 then
-        soundweb_tree:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
+    if items.start_byte:data():uint() ~= 0x02 then
+        trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
     end
     
-    local command = get_escaped_data(soundweb_tree, fds.command, 1)
+    items.command = get_soundweb_item(fds.command, 1)
+    trees.start_byte = items.command:add_to_tree(trees.soundweb)
     
-    local address_tree = soundweb_tree:add("HiQnet Address: ")
-    local node = get_escaped_data(address_tree, fds.node, 2)
-    local virtual_device = get_escaped_data(address_tree, fds.virtual_device, 1)
-    local object = get_escaped_data(address_tree, fds.object, 3)
+    items.node = get_soundweb_item(fds.node, 2)
+    items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
+    items.object = get_soundweb_item(fds.object, 3)
     
-    local state_variable = get_escaped_data(soundweb_tree, fds.state_variable, 2)
-    get_escaped_data(soundweb_tree, fds.data, 4)
-    get_escaped_data(soundweb_tree, fds.checksum, 1)
-    get_escaped_data(soundweb_tree, fds.end_byte, 1)
+    -- ----------------------------------------------------------
+    -- TODO: Should highlight HiQnet address range when selected.
+    -- ----------------------------------------------------------
+    trees.address = trees.soundweb:add("HiQnet Address: ", tvb(items.node:starting_offset(), items.object:ending_offset() - items.node:starting_offset()))
+    trees.node = items.node:add_to_tree(trees.address)
+    trees.virtual_device = items.virtual_device:add_to_tree(trees.address)
+    trees.object = items.object:add_to_tree(trees.address)
+    
+    items.state_variable = get_soundweb_item(fds.state_variable, 2)
+    trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
+    
+    items.data = get_soundweb_item(fds.data, 4)
+    trees.data = items.data:add_to_tree(trees.soundweb)
+    items.checksum = get_soundweb_item(fds.checksum, 1)
+    trees.checksum = items.checksum:add_to_tree(trees.soundweb)
+    items.end_byte = get_soundweb_item(fds.end_byte, 1)
+    trees.end_byte = items.end_byte:add_to_tree(trees.soundweb)
     
     -- Add labels
-    local adr_bytes = ByteArray.new()
-    adr_bytes:append(node)
-    adr_bytes:append(virtual_device)
-    adr_bytes:append(object)
-    
-    local hiqnet_address_text = "0x" .. tostring(adr_bytes)
-    address_tree:append_text(hiqnet_address_text)
-    soundweb_tree:append_text(", HiQnet Address: " .. hiqnet_address_text)
+    local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
+    trees.address:append_text(hiqnet_address_text)
+    trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
     table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
     
-    soundweb_tree:append_text(", SV: 0x" .. tostring(state_variable))
-    table.insert(desc, "SV=0x" .. tostring(state_variable))
+    trees.soundweb:append_text(", SV: 0x" .. tostring(items.state_variable:data()))
+    table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
     
-    soundweb_tree:append_text(", Cmd: 0x" .. tostring(command))
-    table.insert(desc, "Cmd=0x" .. tostring(command))
+    trees.soundweb:append_text(", Cmd: 0x" .. tostring(items.command:data()))
+    table.insert(desc, "Cmd=0x" .. tostring(items.command:data()))
     
-    -- Check for valid end byte: 0x02
-    if tvb(offset - 1, 1):uint() ~= 0x03 then
-        soundweb_tree:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+    -- Check for valid end byte: 0x03
+    if items.end_byte:data():uint() ~= 0x03 then
+        trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
     end
     
     -- Info column
