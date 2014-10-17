@@ -192,9 +192,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     soundweb_tree:set_text(format("BSS Soundweb London Protocol"))
     
     get_escaped_data(soundweb_tree, fds.start_byte, 1)
-    -- --------------------------------------
-    -- TODO: Check for valid start byte: 0x02
-    -- --------------------------------------
+    
+    -- Check for valid start byte: 0x02
+    if tvb(offset - 1, 1):uint() ~= 0x02 then
+        soundweb_tree:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
+    end
+    
     get_escaped_data(soundweb_tree, fds.command, 1)
     
     local address_tree = soundweb_tree:add("HiQnet Address")
@@ -206,9 +209,11 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     get_escaped_data(soundweb_tree, fds.data, 4)
     get_escaped_data(soundweb_tree, fds.checksum, 1)
     get_escaped_data(soundweb_tree, fds.end_byte, 1)
-    -- -- --------------------------------------
-    -- -- TODO: Check for valid end byte: 0x03
-    -- -- --------------------------------------
+    
+    -- Check for valid end byte: 0x02
+    if tvb(offset - 1, 1):uint() ~= 0x03 then
+        soundweb_tree:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+    end
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
