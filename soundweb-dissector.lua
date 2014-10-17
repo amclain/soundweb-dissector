@@ -138,7 +138,7 @@ end
 
 function soundweb_proto.dissector(tvb, pinfo, tree)
     local offset = 0
-    local soundweb_frames
+    local soundweb_tree
     local tap  = {}
     local desc = {}
     
@@ -148,7 +148,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     tap.messages = 0
     tap.body_bytes = 0
     
-    function get_escaped_data(param, len)
+    function get_escaped_data(tree, param, len)
         local starting_offset = offset
         local data = ByteArray.new()
         local byte = nil
@@ -178,31 +178,34 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             len = len - 1
         end
         
-        soundweb_frames:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
+        tree:add(param, tvb(starting_offset, offset - starting_offset), data:tvb()():uint())
         
         return data
     end
     
     -- print(format("soundweb_proto.dissector: offset:%d len:%d reported_len:%d", offset, tvb:len(), tvb:reported_len()), tvb(offset, 5))
     
-    if not soundweb_frames then
-        soundweb_frames = tree:add(soundweb_proto, tvb())
+    if not soundweb_tree then
+        soundweb_tree = tree:add(soundweb_proto, tvb())
     end
     
-    soundweb_frames:set_text(format("BSS Soundweb London Protocol"))
+    soundweb_tree:set_text(format("BSS Soundweb London Protocol"))
     
-    get_escaped_data(fds.start_byte, 1)
+    get_escaped_data(soundweb_tree, fds.start_byte, 1)
     -- --------------------------------------
     -- TODO: Check for valid start byte: 0x02
     -- --------------------------------------
-    get_escaped_data(fds.command, 1)
-    get_escaped_data(fds.node, 2)
-    get_escaped_data(fds.virtual_device, 1)
-    get_escaped_data(fds.object, 3)
-    get_escaped_data(fds.state_variable, 2)
-    get_escaped_data(fds.data, 4)
-    get_escaped_data(fds.checksum, 1)
-    get_escaped_data(fds.end_byte, 1)
+    get_escaped_data(soundweb_tree, fds.command, 1)
+    
+    local address_tree = soundweb_tree:add("HiQnet Address")
+    get_escaped_data(address_tree, fds.node, 2)
+    get_escaped_data(address_tree, fds.virtual_device, 1)
+    get_escaped_data(address_tree, fds.object, 3)
+    
+    get_escaped_data(soundweb_tree, fds.state_variable, 2)
+    get_escaped_data(soundweb_tree, fds.data, 4)
+    get_escaped_data(soundweb_tree, fds.checksum, 1)
+    get_escaped_data(soundweb_tree, fds.end_byte, 1)
     -- -- --------------------------------------
     -- -- TODO: Check for valid end byte: 0x03
     -- -- --------------------------------------
