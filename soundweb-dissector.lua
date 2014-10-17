@@ -1,6 +1,38 @@
----------------------------------------------
--- BSS Soundweb London Wireshark Dissector --
----------------------------------------------
+--------------------------------------------------------------------------------
+-- BSS Soundweb London Wireshark Dissector
+--------------------------------------------------------------------------------
+-- London Architect available from:
+-- http://www.bssaudio.co.uk/en-US/softwares
+-- 
+-- Protocol document: "London DI Kit.pdf"
+-- C:\Program Files (x86)\Harman Pro\London Architect\London DI Kit.pdf
+-- 
+-- Thanks to Peter Zotov and Robert G. Jakabosky for publishing their ZMTP
+-- dissector source code, which was used as a foundation for this dissector.
+-- https://github.com/whitequark/zmtp-wireshark
+--------------------------------------------------------------------------------
+-- The MIT License (MIT)
+
+-- Copyright (c) 2014 Alex McLain
+
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--------------------------------------------------------------------------------
 
 -- cache globals to local for speed.
 local format   = string.format
@@ -121,20 +153,15 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         local data = ByteArray.new()
         local byte = 0
         
-        print(format("starting_offset: %d", offset))
-        
         while len > 0 do
-            byte = tvb(offset, 1)
+            byte = tvb(offset, 1):uint()
             
-            if byte:uint() == 0x1B then
+            if byte == 0x1B then
                 offset = offset + 1
-                byte = tvb(offset, 1)
-                data:append(ByteArray.new(byte:uint() - 0x80))
-            else
-                data:append(byte:bytes())
+                byte = tvb(offset, 1):uint() - 0x80
             end
             
-            print(byte)
+            data:append(ByteArray.new(byte))
             
             offset = offset + 1
             len = len - 1
