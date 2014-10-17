@@ -151,6 +151,7 @@ function SoundwebItem.new(param, field_len, tvb, data, starting_offset, ending_o
     obj.__data = data -- tvb of unescaped data (processed).
     obj.__starting_offset = starting_offset
     obj.__ending_offset = ending_offset
+    obj.__description = ""
     
     return obj
 end
@@ -177,6 +178,18 @@ end
 
 function SoundwebItem:ending_offset()
     return self.__ending_offset
+end
+
+function SoundwebItem:description()
+    return self.__description
+end
+
+function SoundwebItem:set_description(text)
+    self.__description = text
+end
+
+function SoundwebItem:has_description(text)
+    return string.len(self.__description) > 0
 end
 
 function SoundwebItem:add_to_tree(tree)
@@ -243,8 +256,35 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
     end
     
+    trees.start_byte:append_text(" (STX)")
+    
     items.command = get_soundweb_item(fds.command, 1)
-    trees.start_byte = items.command:add_to_tree(trees.soundweb)
+    trees.command = items.command:add_to_tree(trees.soundweb)
+    
+    local command_byte = items.command:data():uint()
+    if command_byte == 0x88 then
+        items.command:set_description("SETSV")
+    elseif command_byte == 0x89 then
+        items.command:set_description("SUBSCRIBESV")
+    elseif command_byte == 0x8A then
+        items.command:set_description("UNSUBSCRIBESV")
+    elseif command_byte == 0x8B then
+        items.command:set_description("VENUE_PRESET_RECALL")
+    elseif command_byte == 0x8C then
+        items.command:set_description("PARAM_PRESET_RECALL")
+    elseif command_byte == 0x8D then
+        items.command:set_description("SETSVPERCENT")
+    elseif command_byte == 0x8E then
+        items.command:set_description("SUBSCRIBESVPERCENT")
+    elseif command_byte == 0x8F then
+        items.command:set_description("UNSUBSCRIBESVPERCENT")
+    elseif command_byte == 0x90 then
+        items.command:set_description("BUMPSVPERCENT")
+    end
+    
+    if items.command:has_description() then
+        trees.command:append_text(" (" .. items.command:description() .. ")")
+    end
     
     items.node = get_soundweb_item(fds.node, 2)
     items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
@@ -278,12 +318,17 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
     
     trees.soundweb:append_text(", Cmd: 0x" .. tostring(items.command:data()))
-    table.insert(desc, "Cmd=0x" .. tostring(items.command:data()))
+    if items.command:has_description() then
+        trees.soundweb:append_text(" (" .. tostring(items.command:description() .. ")"))
+    end
+    table.insert(desc, "Cmd=" .. tostring(items.command:description()))
     
     -- Check for valid end byte: 0x03
     if items.end_byte:data():uint() ~= 0x03 then
         trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
     end
+    
+    trees.end_byte:append_text(" (ETX)")
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
