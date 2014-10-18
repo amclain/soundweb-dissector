@@ -50,7 +50,7 @@ local PI_MALFORMED   = PI_MALFORMED
 local PI_ERROR       = PI_ERROR
 
 -- declare protocol
-local soundweb_proto = Proto("soundweb", "Soundweb", "BSS Soundweb London Protocol")
+local soundweb_proto = Proto("soundweb", "BSS Soundweb London Protocol")
 
 -- setup preferences
 soundweb_proto.prefs["tcp_port_start"] =
@@ -244,9 +244,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         return SoundwebItem.new(param, len, tvb(starting_offset, offset - starting_offset), data:tvb()(), starting_offset, offset)
     end
     
-    -- print(format("soundweb_proto.dissector: offset:%d len:%d reported_len:%d", offset, tvb:len(), tvb:reported_len()), tvb(offset, 5))
-    
-    trees.soundweb = tree:add(soundweb_proto, tvb(), nil, "BSS Soundweb London Protocol")
+    trees.soundweb = tree:add(soundweb_proto, tvb())
     
     items.start_byte = get_soundweb_item(fds.start_byte, 1)
     trees.start_byte = items.start_byte:add_to_tree(trees.soundweb)
