@@ -198,6 +198,22 @@ end
 
 -- End SoundwebItem object
 
+-- bxor algorithm by phoog
+-- http://stackoverflow.com/questions/5977654/lua-bitwise-logical-operations
+local floor = math.floor
+function bxor (a,b)
+  local r = 0
+  for i = 0, 31 do
+    local x = a / 2 + b / 2
+    if x ~= floor (x) then
+      r = r + 2^i
+    end
+    a = floor (a / 2)
+    b = floor (b / 2)
+  end
+  return r
+end
+
 function soundweb_proto.dissector(tvb, pinfo, tree)
     local offset = 0
     local items = {}
@@ -250,11 +266,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     trees.start_byte = items.start_byte:add_to_tree(trees.soundweb)
     
     -- Check for valid start byte: 0x02
-    if items.start_byte:data():uint() ~= 0x02 then
-        trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
+    if items.start_byte:data():uint() == 0x02 then
+        trees.start_byte:append_text(" (STX)")
+    else
+        trees.start_byte:append_text(" (Expected 0x02 STX)")
+        trees.start_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
     end
-    
-    trees.start_byte:append_text(" (STX)")
     
     items.command = get_soundweb_item(fds.command, 1)
     trees.command = items.command:add_to_tree(trees.soundweb)
@@ -301,8 +318,28 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     
     items.data = get_soundweb_item(fds.data, 4)
     trees.data = items.data:add_to_tree(trees.soundweb)
+    
     items.checksum = get_soundweb_item(fds.checksum, 1)
     trees.checksum = items.checksum:add_to_tree(trees.soundweb)
+    
+    local checksum_bytes = ByteArray.new()
+    checksum_bytes:append(items.command:data():bytes())
+    checksum_bytes:append(items.node:data():bytes())
+    checksum_bytes:append(items.virtual_device:data():bytes())
+    checksum_bytes:append(items.object:data():bytes())
+    checksum_bytes:append(items.state_variable:data():bytes())
+    checksum_bytes:append(items.data:data():bytes())
+    
+    local expected_checksum = 0x00
+    for i = 0, checksum_bytes:len() - 1 do
+        expected_checksum = bxor(expected_checksum, checksum_bytes:get_index(i))
+    end
+    
+    if items.checksum:data():uint() ~= expected_checksum then
+        trees.checksum:append_text(format(" (expected 0x%x)", expected_checksum))
+        trees.checksum:add_expert_info(PI_PROTOCOL, PI_ERROR, format("Invalid checksum. Expected 0x%x", expected_checksum))
+    end
+    
     items.end_byte = get_soundweb_item(fds.end_byte, 1)
     trees.end_byte = items.end_byte:add_to_tree(trees.soundweb)
     
@@ -322,11 +359,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     table.insert(desc, "Cmd=" .. tostring(items.command:description()))
     
     -- Check for valid end byte: 0x03
-    if items.end_byte:data():uint() ~= 0x03 then
-        trees.soundweb:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+    if items.end_byte:data():uint() == 0x03 then
+        trees.end_byte:append_text(" (ETX)")
+    else
+        trees.end_byte:append_text(" (Expected 0x03 ETX)")
+        trees.end_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
     end
-    
-    trees.end_byte:append_text(" (ETX)")
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
