@@ -49,6 +49,17 @@ local ByteArray      = ByteArray
 local PI_MALFORMED   = PI_MALFORMED
 local PI_ERROR       = PI_ERROR
 
+-- Soundweb Command Bytes
+local DI_SETSV                = 0x88
+local DI_SUBSCRIBESV          = 0x89
+local DI_UNSUBSCRIBESV        = 0x8A
+local DI_VENUE_PRESET_RECALL  = 0x8B
+local DI_PARAM_PRESET_RECALL  = 0x8C
+local DI_SETSVPERCENT         = 0x8D
+local DI_SUBSCRIBESVPERCENT   = 0x8E
+local DI_UNSUBSCRIBESVPERCENT = 0x8F
+local DI_BUMPSVPERCENT        = 0x90
+
 -- declare protocol
 local soundweb_proto = Proto("soundweb", "BSS Soundweb London Protocol")
 
@@ -277,23 +288,23 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     trees.command = items.command:add_to_tree(trees.soundweb)
     
     local command_byte = items.command:data():uint()
-    if command_byte == 0x88 then
+    if command_byte == DI_SETSV then
         items.command:set_description("SETSV")
-    elseif command_byte == 0x89 then
+    elseif command_byte == DI_SUBSCRIBESV then
         items.command:set_description("SUBSCRIBESV")
-    elseif command_byte == 0x8A then
+    elseif command_byte == DI_UNSUBSCRIBESV then
         items.command:set_description("UNSUBSCRIBESV")
-    elseif command_byte == 0x8B then
+    elseif command_byte == DI_VENUE_PRESET_RECALL then
         items.command:set_description("VENUE_PRESET_RECALL")
-    elseif command_byte == 0x8C then
+    elseif command_byte == DI_PARAM_PRESET_RECALL then
         items.command:set_description("PARAM_PRESET_RECALL")
-    elseif command_byte == 0x8D then
+    elseif command_byte == DI_SETSVPERCENT then
         items.command:set_description("SETSVPERCENT")
-    elseif command_byte == 0x8E then
+    elseif command_byte == DI_SUBSCRIBESVPERCENT then
         items.command:set_description("SUBSCRIBESVPERCENT")
-    elseif command_byte == 0x8F then
+    elseif command_byte == DI_UNSUBSCRIBESVPERCENT then
         items.command:set_description("UNSUBSCRIBESVPERCENT")
-    elseif command_byte == 0x90 then
+    elseif command_byte == DI_BUMPSVPERCENT then
         items.command:set_description("BUMPSVPERCENT")
     end
     
