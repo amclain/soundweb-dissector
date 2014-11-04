@@ -19,7 +19,7 @@ dofile("soundweb-dissector.lua")
 
 Any bugs and feature requests should be reported on the GitHub issue tracker:
 
-https://github.com/amclain/amx-lib-volume/issues
+https://github.com/amclain/soundweb-dissector/issues
 
 
 **Pull requests are preferred via GitHub.**
