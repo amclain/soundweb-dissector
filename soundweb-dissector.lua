@@ -40,6 +40,8 @@ local format   = string.format
 local tostring = tostring
 local tonumber = tonumber
 local pairs    = pairs
+local abs      = math.abs
+local floor    = math.floor
 
 -- wireshark API globals
 local Pref           = Pref
@@ -210,9 +212,13 @@ end
 
 -- End SoundwebItem object
 
+function round (value, precision)
+    local shift = 10 ^ precision
+    return floor(value * shift) / shift
+end
+
 -- bxor algorithm by phoog
 -- http://stackoverflow.com/questions/5977654/lua-bitwise-logical-operations
-local floor = math.floor
 function bxor (a,b)
   local r = 0
   for i = 0, 31 do
@@ -380,9 +386,20 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     end
     
     if command_byte == DI_SETSV then
-        -- TODO: Show conversion in dB.
-    elseif command_byte == DI_SETSVPERCENT then
-        trees.data:append_text(" (" .. tostring(items.data:data():int() / 65536) .. "%)")
+        -- Append data in dB.
+        local db_value = 0
+        local data_value = items.data:data():int()
+        
+        if data_value > -10000 then
+            db_value = data_value / 10000
+        else
+            db_value = -10 * (10 ^ (abs(data_value + 100000) / 200000))
+        end
+        
+        trees.data:append_text(" (" .. tostring(round(db_value, 2)) .. " dB)")
+    elseif command_byte == DI_SETSVPERCENT or command_byte == DI_BUMPSVPERCENT then
+        -- Append data as percent.
+        trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 1)) .. "%)")
     end
     
     -- Check for valid end byte: 0x03
