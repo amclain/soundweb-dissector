@@ -27,6 +27,8 @@ DI_SUBSCRIBESVPERCENT     = 0x8E
 DI_UNSUBSCRIBESVPERCENT   = 0x8F
 DI_BUMPSVPERCENT          = 0x90
 
+# HiQnet address packet.
+# Call #to_a to output its byte sequence.
 def hiqnet_address
   address ||= OpenStruct.new(
     node:           0x1002,
@@ -75,7 +77,7 @@ def message body
   ]
 end
 
-# Pack a value (in dB) into a series of Soundweb bytes.
+# Pack a value in dB into a series of Soundweb bytes.
 def pack_db value
   [
     if value > -10
@@ -83,7 +85,12 @@ def pack_db value
     else
       (-Math.log10((value / 10).abs) * 200000) - 100000
     end
-  ].pack("l>").split("").map(&:ord)
+  ].pack('l>').split('').map(&:ord)
+end
+
+# Pack a value as a percent into a series of Soundweb bytes.
+def pack_percent value
+  [value * 65536].pack('l>').split('').map(&:ord)
 end
 
 # Transmit array of packets to Soundweb hardware.
