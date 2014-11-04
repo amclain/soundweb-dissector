@@ -214,7 +214,7 @@ end
 
 function round (value, precision)
     local shift = 10 ^ precision
-    return floor(value * shift) / shift
+    return floor(value * shift + 0.5) / shift
 end
 
 -- bxor algorithm by phoog
