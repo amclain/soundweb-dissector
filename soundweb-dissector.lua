@@ -288,24 +288,15 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     trees.command = items.command:add_to_tree(trees.soundweb)
     
     local command_byte = items.command:data():uint()
-    if command_byte == DI_SETSV then
-        items.command:set_description("SETSV")
-    elseif command_byte == DI_SUBSCRIBESV then
-        items.command:set_description("SUBSCRIBESV")
-    elseif command_byte == DI_UNSUBSCRIBESV then
-        items.command:set_description("UNSUBSCRIBESV")
-    elseif command_byte == DI_VENUE_PRESET_RECALL then
-        items.command:set_description("VENUE_PRESET_RECALL")
-    elseif command_byte == DI_PARAM_PRESET_RECALL then
-        items.command:set_description("PARAM_PRESET_RECALL")
-    elseif command_byte == DI_SETSVPERCENT then
-        items.command:set_description("SETSVPERCENT")
-    elseif command_byte == DI_SUBSCRIBESVPERCENT then
-        items.command:set_description("SUBSCRIBESVPERCENT")
-    elseif command_byte == DI_UNSUBSCRIBESVPERCENT then
-        items.command:set_description("UNSUBSCRIBESVPERCENT")
-    elseif command_byte == DI_BUMPSVPERCENT then
-        items.command:set_description("BUMPSVPERCENT")
+    if     command_byte == DI_SETSV                then items.command:set_description("SETSV")
+    elseif command_byte == DI_SUBSCRIBESV          then items.command:set_description("SUBSCRIBESV")
+    elseif command_byte == DI_UNSUBSCRIBESV        then items.command:set_description("UNSUBSCRIBESV")
+    elseif command_byte == DI_VENUE_PRESET_RECALL  then items.command:set_description("VENUE_PRESET_RECALL")
+    elseif command_byte == DI_PARAM_PRESET_RECALL  then items.command:set_description("PARAM_PRESET_RECALL")
+    elseif command_byte == DI_SETSVPERCENT         then items.command:set_description("SETSVPERCENT")
+    elseif command_byte == DI_SUBSCRIBESVPERCENT   then items.command:set_description("SUBSCRIBESVPERCENT")
+    elseif command_byte == DI_UNSUBSCRIBESVPERCENT then items.command:set_description("UNSUBSCRIBESVPERCENT")
+    elseif command_byte == DI_BUMPSVPERCENT        then items.command:set_description("BUMPSVPERCENT")
     end
     
     if items.command:has_description() then
