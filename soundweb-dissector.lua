@@ -1,5 +1,6 @@
 --------------------------------------------------------------------------------
 -- BSS Soundweb London Wireshark Dissector
+-- v0.1.0
 --------------------------------------------------------------------------------
 -- London Architect available from:
 -- http://www.bssaudio.co.uk/en-US/softwares
@@ -376,6 +377,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     if command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
         trees.soundweb:append_text(", Preset: 0x" .. tostring(items.data:data()))
         table.insert(desc, "Preset=0x" .. tostring(items.data:data()))
+    end
+    
+    if command_byte == DI_SETSV then
+        -- TODO: Show conversion in dB.
+    elseif command_byte == DI_SETSVPERCENT then
+        trees.data:append_text(" (" .. tostring(items.data:data():int() / 65536) .. "%)")
     end
     
     -- Check for valid end byte: 0x03
