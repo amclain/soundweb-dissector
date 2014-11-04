@@ -73,13 +73,22 @@ def make_message body
 end
 
 packets = [
-  make_message([DI_SETSVPERCENT, *hiqnet_address.to_a, 0x00, 0x00, 0x00, 0x64])
+  make_message([DI_SETSV, *hiqnet_address.to_a, 0x00, 0x00, 0x00, 0x00]), # 0dB
+  make_message([DI_SUBSCRIBESV, *hiqnet_address.to_a, 0x64]), # 100ms
+  make_message([DI_UNSUBSCRIBESV, *hiqnet_address.to_a, 0x00]),
+  make_message([DI_VENUE_PRESET_RECALL, 0x04]), # Preset 4
+  make_message([DI_PARAM_PRESET_RECALL, 0x05]), # Preset 5
+  make_message([DI_SETSVPERCENT, *hiqnet_address.to_a, 0x00, 0x64, 0x00, 0x00]), # 100% (100 * 65536)
+  make_message([DI_SUBSCRIBESVPERCENT, *hiqnet_address.to_a, 0x64]), # 100ms
+  make_message([DI_UNSUBSCRIBESVPERCENT, *hiqnet_address.to_a, 0x00]),
+  make_message([DI_BUMPSVPERCENT, *hiqnet_address.to_a, 0x00, 0x64, 0x00, 0x00]), # 100%
 ]
 
 Ionian::Socket.new host: "#{SOUNDWEB_IP}:#{SOUNDWEB_PORT}" do |socket|
   packets.each do |packet|
     socket.write packet.pack(packet.map { 'C' }.join)
     socket.flush
+    sleep 0.1
   end
 end
 
