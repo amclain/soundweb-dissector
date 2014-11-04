@@ -303,20 +303,22 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.command:append_text(" (" .. items.command:description() .. ")")
     end
     
-    items.node = get_soundweb_item(fds.node, 2)
-    items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
-    items.object = get_soundweb_item(fds.object, 3)
-    
-    -- ----------------------------------------------------------
-    -- TODO: Should highlight HiQnet address range when selected.
-    -- ----------------------------------------------------------
-    trees.address = trees.soundweb:add("HiQnet Address: ", tvb(items.node:starting_offset(), items.object:ending_offset() - items.node:starting_offset()))
-    trees.node = items.node:add_to_tree(trees.address)
-    trees.virtual_device = items.virtual_device:add_to_tree(trees.address)
-    trees.object = items.object:add_to_tree(trees.address)
-    
-    items.state_variable = get_soundweb_item(fds.state_variable, 2)
-    trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
+    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+        items.node = get_soundweb_item(fds.node, 2)
+        items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
+        items.object = get_soundweb_item(fds.object, 3)
+        
+        -- ----------------------------------------------------------
+        -- TODO: Should highlight HiQnet address range when selected.
+        -- ----------------------------------------------------------
+        trees.address = trees.soundweb:add("HiQnet Address: ", tvb(items.node:starting_offset(), items.object:ending_offset() - items.node:starting_offset()))
+        trees.node = items.node:add_to_tree(trees.address)
+        trees.virtual_device = items.virtual_device:add_to_tree(trees.address)
+        trees.object = items.object:add_to_tree(trees.address)
+        
+        items.state_variable = get_soundweb_item(fds.state_variable, 2)
+        trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
+    end
     
     local data_len = 1
     if  command_byte == DI_SETSV or
@@ -333,10 +335,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     
     local checksum_bytes = ByteArray.new()
     checksum_bytes:append(items.command:data():bytes())
-    checksum_bytes:append(items.node:data():bytes())
-    checksum_bytes:append(items.virtual_device:data():bytes())
-    checksum_bytes:append(items.object:data():bytes())
-    checksum_bytes:append(items.state_variable:data():bytes())
+    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+        checksum_bytes:append(items.node:data():bytes())
+        checksum_bytes:append(items.virtual_device:data():bytes())
+        checksum_bytes:append(items.object:data():bytes())
+        checksum_bytes:append(items.state_variable:data():bytes())
+    end
     checksum_bytes:append(items.data:data():bytes())
     
     local expected_checksum = 0x00
@@ -353,13 +357,15 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     trees.end_byte = items.end_byte:add_to_tree(trees.soundweb)
     
     -- Add labels
-    local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
-    trees.address:append_text(hiqnet_address_text)
-    trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
-    table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
-    
-    trees.soundweb:append_text(", SV: 0x" .. tostring(items.state_variable:data()))
-    table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
+    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+        local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
+        trees.address:append_text(hiqnet_address_text)
+        trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
+        table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
+        
+        trees.soundweb:append_text(", SV: 0x" .. tostring(items.state_variable:data()))
+        table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
+    end
     
     trees.soundweb:append_text(", Cmd: 0x" .. tostring(items.command:data()))
     if items.command:has_description() then
