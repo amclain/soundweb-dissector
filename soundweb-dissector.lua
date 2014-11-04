@@ -93,7 +93,7 @@ fds.node           = ProtoField.new("Node", "soundweb.node", ftypes.UINT16, nil,
 fds.virtual_device = ProtoField.new("Virtual Device", "soundweb.virtual_device", ftypes.UINT8, nil, base.HEX)
 fds.object         = ProtoField.new("Object", "soundweb.object", ftypes.UINT24, nil, base.HEX)
 fds.state_variable = ProtoField.new("State Variable", "soundweb.state_variable", ftypes.UINT16, nil, base.HEX)
-fds.data           = ProtoField.new("Data", "soundweb.data", ftypes.UINT32, nil, base.HEX_DEC)
+fds.data           = ProtoField.new("Data", "soundweb.data", ftypes.INT32, nil, base.DEC)
 fds.checksum       = ProtoField.new("Checksum", "soundweb.checksum", ftypes.UINT8, nil, base.HEX)
 
 local tcp_stream_id = Field.new("tcp.stream")
@@ -381,8 +381,8 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     table.insert(desc, "Cmd=" .. tostring(items.command:description()))
     
     if command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
-        trees.soundweb:append_text(", Preset: 0x" .. tostring(items.data:data()))
-        table.insert(desc, "Preset=0x" .. tostring(items.data:data()))
+        trees.soundweb:append_text(", Preset: " .. tostring(items.data:data():int()))
+        table.insert(desc, "Preset=" .. tostring(items.data:data():int()))
     end
     
     if command_byte == DI_SETSV then
