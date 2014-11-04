@@ -373,6 +373,11 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     end
     table.insert(desc, "Cmd=" .. tostring(items.command:description()))
     
+    if command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
+        trees.soundweb:append_text(", Preset: 0x" .. tostring(items.data:data()))
+        table.insert(desc, "Preset=0x" .. tostring(items.data:data()))
+    end
+    
     -- Check for valid end byte: 0x03
     if items.end_byte:data():uint() == 0x03 then
         trees.end_byte:append_text(" (ETX)")
