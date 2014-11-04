@@ -399,7 +399,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.data:append_text(" (" .. tostring(round(db_value, 2)) .. " dB)")
     elseif command_byte == DI_SETSVPERCENT or command_byte == DI_BUMPSVPERCENT then
         -- Append data as percent.
-        trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 1)) .. "%)")
+        trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 2)) .. "%)")
     end
     
     -- Check for valid end byte: 0x03
