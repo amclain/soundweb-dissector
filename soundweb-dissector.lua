@@ -67,17 +67,14 @@ local DI_BUMPSVPERCENT        = 0x90
 local soundweb_proto = Proto("soundweb", "BSS Soundweb London Protocol")
 
 -- setup preferences
-soundweb_proto.prefs["tcp_port_start"] =
-    Pref.string("TCP port range start", "1023", "First TCP port to decode as this protocol")
-soundweb_proto.prefs["tcp_port_end"] =
-    Pref.string("TCP port range end", "1023", "Last TCP port to decode as this protocol")
+soundweb_proto.prefs["tcp_port"] =
+    Pref.string("TCP Port", "1023", "TCP port to decode as this protocol.")
 soundweb_proto.prefs["protocol"] =
     Pref.string("Encapsulated protocol", "", "Subdissector to invoke")
 
 -- current preferences settings.
 local current_settings = {
-    tcp_port_start = -1,
-    tcp_port_end = -1,
+    tcp_port = -1,
     protocol = "",
 }
 
@@ -99,55 +96,27 @@ fds.checksum       = ProtoField.new("Checksum", "soundweb.checksum", ftypes.UINT
 local tcp_stream_id = Field.new("tcp.stream")
 local subdissectors = DissectorTable.new("soundweb.protocol", "Soundweb", ftypes.STRING)
 
--- un-register tcp port range
-local function unregister_tcp_port_range(start_port, end_port)
-    if not start_port or start_port <= 0 or not end_port or end_port <= 0 then
-        return
-    end
-    local tcp_port_table = DissectorTable.get("tcp.port")
-    for port = start_port, end_port do
-        tcp_port_table:remove(port, soundweb_proto)
-    end
-end
-
--- register tcp port range
-local function register_tcp_port_range(start_port, end_port)
-    if not start_port or start_port <= 0 or not end_port or end_port <= 0 then
-        return
-    end
-    local tcp_port_table = DissectorTable.get("tcp.port")
-    for port = start_port, end_port do
-        tcp_port_table:add(port, soundweb_proto)
-    end
-end
-
--- handle preferences changes.
+-- Handle preferences changes.
 function soundweb_proto.init(arg1, arg2)
-    local old_start, old_end
-    local new_start, new_end
-    -- check if preferences have changed.
-    for pref_name,old_v in pairs(current_settings) do
-        local new_v = soundweb_proto.prefs[pref_name]
-        if new_v ~= old_v then
-            if pref_name == "tcp_port_start" then
-                old_start = old_v
-                new_start = new_v
-            elseif pref_name == "tcp_port_end" then
-                old_end = old_v
-                new_end = new_v
+    local old_port, new_port
+    
+    -- Check if preferences have changed.
+    for pref_name, old_val in pairs(current_settings) do
+        local new_val = soundweb_proto.prefs[pref_name]
+        if new_val ~= old_val then
+            if pref_name == "tcp_port" then
+                old_port = tonumber(old_val)
+                new_port = tonumber(new_val)
             end
-            -- save new value.
-            current_settings[pref_name] = new_v
+            -- Save new value.
+            current_settings[pref_name] = new_val
         end
     end
-    -- un-register old port range
-    if old_start and old_end then
-        unregister_tcp_port_range(tonumber(old_start), tonumber(old_end))
-    end
-    -- register new port range.
-    if new_start and new_end then
-        register_tcp_port_range(tonumber(new_start), tonumber(new_end))
-    end
+    
+    -- Update port change.
+    local tcp_port_table = DissectorTable.get("tcp.port")
+    if old_port and old_port > 0 then tcp_port_table:remove(old_port, soundweb_proto) end
+    if new_port and new_port > 0 then tcp_port_table:add(new_port, soundweb_proto) end
 end
 
 -- SoundwebItem object
