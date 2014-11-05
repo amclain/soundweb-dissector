@@ -373,13 +373,8 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     end
     table.insert(desc, "Cmd=" .. tostring(items.command:description()))
     
-    if command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
-        trees.soundweb:append_text(", Preset: " .. tostring(items.data:data():int()))
-        table.insert(desc, "Preset=" .. tostring(items.data:data():int()))
-    end
-    
     if command_byte == DI_SETSV then
-        -- Append data in dB.
+        -- Append data as level in dB.
         local db_value = 0
         local data_value = items.data:data():int()
         
@@ -402,6 +397,10 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         if items.data:data():int() == 0 then
             trees.data:append_text(" (unsubscribe)")
         end
+    elseif command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
+        -- Append data as preset number.
+        trees.soundweb:append_text(", Preset: " .. tostring(items.data:data():int()))
+        table.insert(desc, "Preset=" .. tostring(items.data:data():int()))
     end
     
     -- Check for valid end byte: 0x03
