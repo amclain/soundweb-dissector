@@ -88,14 +88,14 @@ def pack_db value
     if value > -10
       value * 10000
     else
-      (-Math.log10((value / 10).abs) * 200000) - 100000
+      (-1 * Math.log10((value / 10).abs) * 200000) - 100000
     end
   )
 end
 
 # Pack a value as a percent into a series of Soundweb bytes.
 def pack_percent value
-  pack_data value * 65536
+  pack_data(value * 65536)
 end
 
 # Transmit array of packets to Soundweb hardware.
