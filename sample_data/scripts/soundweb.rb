@@ -77,20 +77,25 @@ def message body
   ]
 end
 
+# Pack a value as a series of Soundweb bytes.
+def pack_data value
+  [value].pack('l>').split('').map(&:ord)
+end
+
 # Pack a value in dB into a series of Soundweb bytes.
 def pack_db value
-  [
+  pack_data(
     if value > -10
       value * 10000
     else
       (-Math.log10((value / 10).abs) * 200000) - 100000
     end
-  ].pack('l>').split('').map(&:ord)
+  )
 end
 
 # Pack a value as a percent into a series of Soundweb bytes.
 def pack_percent value
-  [value * 65536].pack('l>').split('').map(&:ord)
+  pack_data value * 65536
 end
 
 # Transmit array of packets to Soundweb hardware.

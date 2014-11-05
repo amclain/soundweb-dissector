@@ -327,14 +327,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
     end
     
-    local data_len = 1
-    if  command_byte == DI_SETSV or
-        command_byte == DI_SETSVPERCENT or
-        command_byte == DI_BUMPSVPERCENT then
-            data_len = 4
-    end
-    
-    items.data = get_soundweb_item(fds.data, data_len)
+    items.data = get_soundweb_item(fds.data, 4)
     trees.data = items.data:add_to_tree(trees.soundweb)
     
     items.checksum = get_soundweb_item(fds.checksum, 1)
