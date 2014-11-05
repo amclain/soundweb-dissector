@@ -205,14 +205,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     local offset = 0
     local items = {}
     local trees = {}
-    local tap  = {}
     local desc = {}
-    
-    tap.mechanism = ""
-    tap.frames = 0
-    tap.commands = 0
-    tap.messages = 0
-    tap.body_bytes = 0
     
     function get_soundweb_item(param, len)
         local starting_offset = offset
@@ -383,7 +376,6 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     -- Info column
     pinfo.cols.protocol = "Soundweb"
     pinfo.cols.info = table.concat(desc, " ")
-    -- pinfo.tap_data = tap
 
     -- return offset
 end
