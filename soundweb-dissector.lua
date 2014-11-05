@@ -376,6 +376,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     -- Info column
     pinfo.cols.protocol = "Soundweb"
     pinfo.cols.info = table.concat(desc, " ")
-
-    -- return offset
+    
+    -- Return the number of bytes consumed from tvb.
+    return offset
 end
