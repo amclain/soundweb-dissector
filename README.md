@@ -3,17 +3,15 @@
 ## Screenshot
 ![BSS Soundweb London Protocol Wireshark Dissector Screenshot](screenshot.png)
 
+
 ## Installation
 
-Navigate to `C:\Program Files\Wireshark` on Windows, or `~/.wireshark` on Linux.
+This plugin was tested with Wireshark `1.12.1`.
 
-Copy `soundweb-dissector.lua` to this directory.
+Copy `soundweb-dissector.lua` to `%APPDATA%\Wireshark\plugins` on Windows, or
+`~/.wireshark/plugins` on Linux. See the Wireshark [Configuration Files and Folders](https://www.wireshark.org/docs/wsug_html_chunked/ChAppFilesConfigurationSection.html)
+documentation for more information.
 
-Add the following code to the end of `init.lua` in this directory:
-
-``` lua
-dofile("soundweb-dissector.lua")
-```
 
 ## Issues, Bugs, Feature Requests
 
