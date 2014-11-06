@@ -249,7 +249,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     if items.start_byte:data():uint() == 0x02 then
         trees.start_byte:append_text(" (STX)")
     else
-        trees.start_byte:append_text(" (Expected 0x02 STX)")
+        trees.start_byte:append_text(" [incorrect, expected 0x02 STX]")
         trees.start_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
     end
     
@@ -311,8 +311,8 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     end
     
     if items.checksum:data():uint() ~= expected_checksum then
-        trees.checksum:append_text(format(" (expected 0x%x)", expected_checksum))
-        trees.checksum:add_expert_info(PI_PROTOCOL, PI_ERROR, format("Invalid checksum. Expected 0x%x", expected_checksum))
+        trees.checksum:append_text(format(" [incorrect, expected 0x%x]", expected_checksum))
+        trees.checksum:add_expert_info(PI_CHECKSUM, PI_ERROR, format("Bad checksum. Expected 0x%x", expected_checksum))
     end
     
     items.end_byte = get_soundweb_item(fds.end_byte, 1)
@@ -369,7 +369,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     if items.end_byte:data():uint() == 0x03 then
         trees.end_byte:append_text(" (ETX)")
     else
-        trees.end_byte:append_text(" (Expected 0x03 ETX)")
+        trees.end_byte:append_text(" [incorrect, expected 0x03 ETX]")
         trees.end_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
     end
     
