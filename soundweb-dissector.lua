@@ -295,6 +295,14 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     items.data = get_soundweb_item(fds.data, 4)
     trees.data = items.data:add_to_tree(trees.soundweb)
     
+    if command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
+        -- Unsubscribe command expects data == 0
+        if items.data:data():int() ~= 0 then
+            trees.data:append_text(" [incorrect, expected 0]")
+            trees.data:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected data for unsubscribe command to be 0")
+        end
+    end
+    
     items.checksum = get_soundweb_item(fds.checksum, 1)
     trees.checksum = items.checksum:add_to_tree(trees.soundweb)
     
