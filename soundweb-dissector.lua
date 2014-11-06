@@ -266,6 +266,9 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     elseif command_byte == DI_SUBSCRIBESVPERCENT   then items.command:set_description("SUBSCRIBESVPERCENT")
     elseif command_byte == DI_UNSUBSCRIBESVPERCENT then items.command:set_description("UNSUBSCRIBESVPERCENT")
     elseif command_byte == DI_BUMPSVPERCENT        then items.command:set_description("BUMPSVPERCENT")
+    else
+        trees.command:append_text(" [incorrect, expected 0x88-0x90]")
+        trees.command:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected command to be between 0x88 and 0x90")
     end
     
     if items.command:has_description() then
