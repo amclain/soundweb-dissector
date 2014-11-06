@@ -9,7 +9,8 @@
 This plugin was tested with Wireshark `1.12.1`.
 
 Copy `soundweb-dissector.lua` to `%APPDATA%\Wireshark\plugins` on Windows, or
-`~/.wireshark/plugins` on Linux. See the Wireshark [Configuration Files and Folders](https://www.wireshark.org/docs/wsug_html_chunked/ChAppFilesConfigurationSection.html)
+`~/.wireshark/plugins` on Linux. For development, clone this repository to the
+plugins directory. See the Wireshark [Configuration Files and Folders](https://www.wireshark.org/docs/wsug_html_chunked/ChAppFilesConfigurationSection.html)
 documentation for more information.
 
 
