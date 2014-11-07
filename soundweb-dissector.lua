@@ -84,7 +84,7 @@ local fds = soundweb_proto.fields
 
 fds.start_byte     = ProtoField.new("Start Byte", "soundweb.start_byte", ftypes.UINT8, nil, base.HEX)
 fds.end_byte       = ProtoField.new("End Byte", "soundweb.end_byte", ftypes.UINT8, nil, base.HEX)
-fds.hiqnet_address = ProtoField.new("HiQnet Address", "soundweb.hiqnet_address", ftypes.BYTES)
+-- fds.hiqnet_address = ProtoField.new("HiQnet Address", "soundweb.hiqnet_address", ftypes.BYTES)
 fds.command        = ProtoField.new("Command", "soundweb.command", ftypes.UINT8, nil, base.HEX)
 fds.node           = ProtoField.new("Node", "soundweb.node", ftypes.UINT16, nil, base.HEX)
 fds.virtual_device = ProtoField.new("Virtual Device", "soundweb.virtual_device", ftypes.UINT8, nil, base.HEX)
@@ -302,6 +302,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             
             -- TODO: Change to fds.hiqnet_address so byte range is highlighted
             --       when tree item is selected.
+            --       This also lets users filter by HiQnet address.
             --       
             --       Unfortunately tvbrange:bytes() throws an error and won't
             --       populate this field. tvbrange:int() complains about the
