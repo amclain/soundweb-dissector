@@ -84,7 +84,7 @@ local fds = soundweb_proto.fields
 
 fds.start_byte     = ProtoField.new("Start Byte", "soundweb.start_byte", ftypes.UINT8, nil, base.HEX)
 fds.end_byte       = ProtoField.new("End Byte", "soundweb.end_byte", ftypes.UINT8, nil, base.HEX)
--- fds.hiqnet_address = ProtoField.new("HiQnet Address", "soundweb.hiqnet_address", ftypes.BYTES)
+fds.hiqnet_address = ProtoField.new("HiQnet Address", "soundweb.hiqnet_address", ftypes.STRING)
 fds.command        = ProtoField.new("Command", "soundweb.command", ftypes.UINT8, nil, base.HEX)
 fds.node           = ProtoField.new("Node", "soundweb.node", ftypes.UINT16, nil, base.HEX)
 fds.virtual_device = ProtoField.new("Virtual Device", "soundweb.virtual_device", ftypes.UINT8, nil, base.HEX)
@@ -300,18 +300,33 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
             items.object = get_soundweb_item(fds.object, 3)
             
-            -- TODO: Change to fds.hiqnet_address so byte range is highlighted
-            --       when tree item is selected.
-            --       This also lets users filter by HiQnet address.
-            --       
-            --       Unfortunately tvbrange:bytes() throws an error and won't
-            --       populate this field. tvbrange:int() complains about the
-            --       size of the field.
-            --       
-            --       See changeset 1c0ffef4ea68, line 286
-            --       
-            --       http://wiki.wireshark.org/LuaAPI/Tvb#Tvb
-            trees.address = trees.soundweb:add("HiQnet Address: ")
+            if items.node ~= nil and items.virtual_device ~= nil and items.object ~= nil then
+                local hiqnet_address_bytes = ByteArray.new()
+                hiqnet_address_bytes:append(items.node:data():bytes())
+                hiqnet_address_bytes:append(items.virtual_device:data():bytes())
+                hiqnet_address_bytes:append(items.object:data():bytes())
+                
+                items.address = SoundwebItem.new(
+                    fds.hiqnet_address,
+                    items.object:ending_offset() - items.node:starting_offset(),
+                    tvb(items.node:starting_offset(), hiqnet_address_len),
+                    ByteArray.tvb(hiqnet_address_bytes):range(),
+                    items.node:starting_offset(),
+                    items.object:ending_offset()
+                )
+                
+                items.address:set_description("0x" .. tostring(ByteArray.tvb(hiqnet_address_bytes):range():bytes()))
+                
+                trees.address = trees.soundweb:add(
+                    fds.hiqnet_address,
+                    tvb(items.node:starting_offset(), items.object:ending_offset() - items.node:starting_offset()),
+                    items.address:description()
+                )
+            else
+                -- Create generic TreeItem if there's an error with an address item.
+                trees.address = trees.soundweb:add("HiQnet Address: ")
+            end
+            
             if items.node ~= nil then
                 trees.node = items.node:add_to_tree(trees.address)
             end
@@ -399,10 +414,8 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     if items.command ~= nil then
         if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
             if items.node ~= nil and items.virtual_device ~= nil and items.object ~= nil then
-                local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
-                trees.address:append_text(hiqnet_address_text)
-                trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
-                table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
+                trees.soundweb:append_text(", HiQnet Address: " .. items.address:description())
+                table.insert(desc, "HiQnet Address=" .. items.address:description())
             end
             
             if items.state_variable ~= nil then
