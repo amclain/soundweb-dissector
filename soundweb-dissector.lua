@@ -449,10 +449,23 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     pinfo.cols.info = table.concat(desc, " ")
     
     if err.packet_too_short == true then
-        pinfo.cols.info = "[UNEXPECTED END OF PACKET]"
-        trees.soundweb:set_text(soundweb_proto.description .. ", [Unexpected end of packet]")
-        local err = trees.soundweb:add("[Unexpected end of packet: Packet too short]")
-        err:add_expert_info(PI_MALFORMED, PI_ERROR, "Unexpected end of packet: Packet too short")
+        local msg = "Unexpected end of packet"
+        local bracket_msg = "[" .. msg .. "]"
+        
+        pinfo.cols.info = string.upper(bracket_msg)
+        trees.soundweb:set_text(soundweb_proto.description .. ", " .. bracket_msg)
+        local err = trees.soundweb:add(bracket_msg)
+        err:add_expert_info(PI_MALFORMED, PI_ERROR, msg)
+    elseif offset < tvb:len() then
+        -- Packet length too long.
+        -- This test should be after packet_too_short.
+        local msg = "Unexpected data after end of packet"
+        local bracket_msg = "[" .. msg .. "]"
+        
+        pinfo.cols.info = tostring(pinfo.cols.info) .. " " .. string.upper(bracket_msg)
+        trees.soundweb:append_text(" " .. bracket_msg)
+        local err = trees.soundweb:add(bracket_msg)
+        err:add_expert_info(PI_MALFORMED, PI_ERROR, msg)
     end
     
     -- Return the number of bytes consumed from tvb.
