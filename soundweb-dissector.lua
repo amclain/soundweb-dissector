@@ -93,6 +93,9 @@ fds.state_variable = ProtoField.new("State Variable", "soundweb.state_variable",
 fds.data           = ProtoField.new("Data", "soundweb.data", ftypes.INT32, nil, base.DEC)
 fds.checksum       = ProtoField.new("Checksum", "soundweb.checksum", ftypes.UINT8, nil, base.HEX)
 
+-- For Wireshark coloring rules. True if there is a problem with the packet.
+fds.error          = ProtoField.new("Error", "soundweb.error", ftypes.BOOLEAN)
+
 local tcp_stream_id = Field.new("tcp.stream")
 local subdissectors = DissectorTable.new("soundweb.protocol", "Soundweb", ftypes.STRING)
 
@@ -207,6 +210,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     local trees = {}
     local desc = {}
     local err = {
+        soundweb_error   = false, -- Generic error (for packet coloring).
         packet_too_short = false,
     }
     
@@ -248,6 +252,12 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         return SoundwebItem.new(param, len, tvb(starting_offset, offset - starting_offset), data:tvb()(), starting_offset, offset)
     end
     
+    function set_soundweb_error(treeitem)
+        err.soundweb_error = true
+        treeitem = treeitem or trees.soundweb
+        treeitem:add(fds.error, true):set_generated()
+    end
+    
     trees.soundweb = tree:add(soundweb_proto, tvb())
     
     -- -------------
@@ -277,6 +287,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             items.command:set_description("0x" .. tostring(items.command:data()))
             trees.command:append_text(" [incorrect, expected 0x88-0x90]")
             trees.command:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected command to be between 0x88 and 0x90")
+            set_soundweb_error(trees.command)
         end
         
         if items.command:has_description() then
@@ -314,6 +325,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
                 trees.address:append_text("[incomplete]")
                 local err = trees.address:add("[Incomplete address]")
                 err:add_expert_info(PI_MALFORMED, PI_ERROR, "Incomplete address")
+                set_soundweb_error(err)
             end
             
             -- State Variable
@@ -333,6 +345,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             if items.data:data():int() ~= 0 then
                 trees.data:append_text(" [incorrect, expected 0]")
                 trees.data:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected data for unsubscribe command to be 0")
+                set_soundweb_error(trees.data)
             end
         end
     end
@@ -359,6 +372,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         if items.checksum:data():uint() ~= expected_checksum then
             trees.checksum:append_text(format(" [incorrect, expected 0x%x]", expected_checksum))
             trees.checksum:add_expert_info(PI_CHECKSUM, PI_ERROR, format("Bad checksum. Expected 0x%x", expected_checksum))
+            set_soundweb_error(trees.checksum)
         end
     end
     
@@ -377,6 +391,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         else
             trees.start_byte:append_text(" [incorrect, expected 0x02 STX]")
             trees.start_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
+            set_soundweb_error(trees.start_byte)
         end
     end
     
@@ -441,6 +456,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         else
             trees.end_byte:append_text(" [incorrect, expected 0x03 ETX]")
             trees.end_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+            set_soundweb_error(trees.end_byte)
         end
     end
     
@@ -456,6 +472,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.soundweb:set_text(soundweb_proto.description .. ", " .. bracket_msg)
         local err = trees.soundweb:add(bracket_msg)
         err:add_expert_info(PI_MALFORMED, PI_ERROR, msg)
+        set_soundweb_error(err)
     elseif offset < tvb:len() then
         -- Packet length too long.
         -- This test should be after packet_too_short.
@@ -466,6 +483,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         trees.soundweb:append_text(" " .. bracket_msg)
         local err = trees.soundweb:add(bracket_msg)
         err:add_expert_info(PI_MALFORMED, PI_ERROR, msg)
+        set_soundweb_error(err)
     end
     
     -- Return the number of bytes consumed from tvb.

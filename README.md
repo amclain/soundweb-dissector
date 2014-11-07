@@ -14,6 +14,19 @@ plugins directory. See the Wireshark [Configuration Files and Folders](https://w
 documentation for more information.
 
 
+### Coloring Rules
+
+Adding the following [coloring rule](https://www.wireshark.org/docs/wsug_html_chunked/ChCustColorizationSection.html)
+to Wireshark will highlight Soundweb packets with errors.
+
+`View -> Coloring Rules... -> New`
+
+    Name: Soundweb Error
+    String: soundweb.error==true
+    Foreground Color: #FFFFFF
+    Background Color: #A40000
+
+
 ## Issues, Bugs, Feature Requests
 
 Any bugs and feature requests should be reported on the GitHub issue tracker:
