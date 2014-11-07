@@ -289,7 +289,17 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
             items.object = get_soundweb_item(fds.object, 3)
             
-            trees.address = trees.soundweb:add("HiQnet Address: ") -- TODO: Change to fds.hiqnet_address
+            -- TODO: Change to fds.hiqnet_address so byte range is highlighted
+            --       when tree item is selected.
+            --       
+            --       Unfortunately tvbrange:bytes() throws an error and won't
+            --       populate this field. tvbrange:int() complains about the
+            --       size of the field.
+            --       
+            --       See changeset 1c0ffef4ea68, line 286
+            --       
+            --       http://wiki.wireshark.org/LuaAPI/Tvb#Tvb
+            trees.address = trees.soundweb:add("HiQnet Address: ")
             if items.node ~= nil then
                 trees.node = items.node:add_to_tree(trees.address)
             end
