@@ -206,6 +206,9 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     local items = {}
     local trees = {}
     local desc = {}
+    local err = {
+        packet_too_short = false,
+    }
     
     function get_soundweb_item(param, len)
         local starting_offset = offset
@@ -214,6 +217,11 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         local do_escape = false
         
         while len > 0 do
+            if offset > tvb:len() - 1 then
+                err.packet_too_short = true
+                return nil
+            end
+            
             do_escape = false
             byte = tvb(offset, 1)
             
@@ -242,151 +250,200 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
     
     trees.soundweb = tree:add(soundweb_proto, tvb())
     
+    -- -------------
+    -- Consume Bytes
+    -- -------------
     items.start_byte = get_soundweb_item(fds.start_byte, 1)
-    trees.start_byte = items.start_byte:add_to_tree(trees.soundweb)
-    
-    -- Check for valid start byte: 0x02
-    if items.start_byte:data():uint() == 0x02 then
-        trees.start_byte:append_text(" (STX)")
-    else
-        trees.start_byte:append_text(" [incorrect, expected 0x02 STX]")
-        trees.start_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
+    if items.start_byte ~= nil then
+        trees.start_byte = items.start_byte:add_to_tree(trees.soundweb)
     end
     
+    local command_byte
     items.command = get_soundweb_item(fds.command, 1)
-    trees.command = items.command:add_to_tree(trees.soundweb)
-    
-    local command_byte = items.command:data():uint()
-    if     command_byte == DI_SETSV                then items.command:set_description("SETSV")
-    elseif command_byte == DI_SUBSCRIBESV          then items.command:set_description("SUBSCRIBESV")
-    elseif command_byte == DI_UNSUBSCRIBESV        then items.command:set_description("UNSUBSCRIBESV")
-    elseif command_byte == DI_VENUE_PRESET_RECALL  then items.command:set_description("VENUE_PRESET_RECALL")
-    elseif command_byte == DI_PARAM_PRESET_RECALL  then items.command:set_description("PARAM_PRESET_RECALL")
-    elseif command_byte == DI_SETSVPERCENT         then items.command:set_description("SETSVPERCENT")
-    elseif command_byte == DI_SUBSCRIBESVPERCENT   then items.command:set_description("SUBSCRIBESVPERCENT")
-    elseif command_byte == DI_UNSUBSCRIBESVPERCENT then items.command:set_description("UNSUBSCRIBESVPERCENT")
-    elseif command_byte == DI_BUMPSVPERCENT        then items.command:set_description("BUMPSVPERCENT")
-    else
-        trees.command:append_text(" [incorrect, expected 0x88-0x90]")
-        trees.command:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected command to be between 0x88 and 0x90")
-    end
-    
-    if items.command:has_description() then
-        trees.command:append_text(" (" .. items.command:description() .. ")")
-    end
-    
-    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
-        items.node = get_soundweb_item(fds.node, 2)
-        items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
-        items.object = get_soundweb_item(fds.object, 3)
+    if items.command ~= nil then
+        trees.command = items.command:add_to_tree(trees.soundweb)
         
-        -- ----------------------------------------------------------
-        -- TODO: Should highlight HiQnet address range when selected.
-        -- ----------------------------------------------------------
-        trees.address = trees.soundweb:add("HiQnet Address: ", tvb(items.node:starting_offset(), items.object:ending_offset() - items.node:starting_offset()))
-        trees.node = items.node:add_to_tree(trees.address)
-        trees.virtual_device = items.virtual_device:add_to_tree(trees.address)
-        trees.object = items.object:add_to_tree(trees.address)
+        command_byte = items.command:data():uint()
+        if     command_byte == DI_SETSV                then items.command:set_description("SETSV")
+        elseif command_byte == DI_SUBSCRIBESV          then items.command:set_description("SUBSCRIBESV")
+        elseif command_byte == DI_UNSUBSCRIBESV        then items.command:set_description("UNSUBSCRIBESV")
+        elseif command_byte == DI_VENUE_PRESET_RECALL  then items.command:set_description("VENUE_PRESET_RECALL")
+        elseif command_byte == DI_PARAM_PRESET_RECALL  then items.command:set_description("PARAM_PRESET_RECALL")
+        elseif command_byte == DI_SETSVPERCENT         then items.command:set_description("SETSVPERCENT")
+        elseif command_byte == DI_SUBSCRIBESVPERCENT   then items.command:set_description("SUBSCRIBESVPERCENT")
+        elseif command_byte == DI_UNSUBSCRIBESVPERCENT then items.command:set_description("UNSUBSCRIBESVPERCENT")
+        elseif command_byte == DI_BUMPSVPERCENT        then items.command:set_description("BUMPSVPERCENT")
+        else
+            items.command:set_description("0x" .. tostring(items.command:data()))
+            trees.command:append_text(" [incorrect, expected 0x88-0x90]")
+            trees.command:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected command to be between 0x88 and 0x90")
+        end
         
-        items.state_variable = get_soundweb_item(fds.state_variable, 2)
-        trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
+        if items.command:has_description() then
+            trees.command:append_text(" (" .. items.command:description() .. ")")
+        end
+        
+        if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+            -- HiQnet Address
+            items.node = get_soundweb_item(fds.node, 2)
+            items.virtual_device = get_soundweb_item(fds.virtual_device, 1)
+            items.object = get_soundweb_item(fds.object, 3)
+            
+            trees.address = trees.soundweb:add("HiQnet Address: ") -- TODO: Change to fds.hiqnet_address
+            if items.node ~= nil then
+                trees.node = items.node:add_to_tree(trees.address)
+            end
+            if items.virtual_device ~= nil then
+                trees.virtual_device = items.virtual_device:add_to_tree(trees.address)
+            end
+            if items.object ~= nil then
+                trees.object = items.object:add_to_tree(trees.address)
+            end
+            
+            if items.node == nil or items.virtual_device == nil or items.object == nil then
+                trees.address:append_text("[incomplete]")
+                local err = trees.address:add("[Incomplete address]")
+                err:add_expert_info(PI_MALFORMED, PI_ERROR, "Incomplete address")
+            end
+            
+            -- State Variable
+            items.state_variable = get_soundweb_item(fds.state_variable, 2)
+            if items.state_variable ~= nil then
+                trees.state_variable = items.state_variable:add_to_tree(trees.soundweb)
+            end
+        end
     end
     
     items.data = get_soundweb_item(fds.data, 4)
-    trees.data = items.data:add_to_tree(trees.soundweb)
-    
-    if command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
-        -- Unsubscribe command expects data == 0
-        if items.data:data():int() ~= 0 then
-            trees.data:append_text(" [incorrect, expected 0]")
-            trees.data:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected data for unsubscribe command to be 0")
+    if items.data ~= nil then
+        trees.data = items.data:add_to_tree(trees.soundweb)
+        
+        if command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
+            -- Unsubscribe command expects data == 0
+            if items.data:data():int() ~= 0 then
+                trees.data:append_text(" [incorrect, expected 0]")
+                trees.data:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected data for unsubscribe command to be 0")
+            end
         end
     end
     
     items.checksum = get_soundweb_item(fds.checksum, 1)
-    trees.checksum = items.checksum:add_to_tree(trees.soundweb)
-    
-    local checksum_bytes = ByteArray.new()
-    checksum_bytes:append(items.command:data():bytes())
-    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
-        checksum_bytes:append(items.node:data():bytes())
-        checksum_bytes:append(items.virtual_device:data():bytes())
-        checksum_bytes:append(items.object:data():bytes())
-        checksum_bytes:append(items.state_variable:data():bytes())
-    end
-    checksum_bytes:append(items.data:data():bytes())
-    
-    local expected_checksum = 0x00
-    for i = 0, checksum_bytes:len() - 1 do
-        expected_checksum = bxor(expected_checksum, checksum_bytes:get_index(i))
-    end
-    
-    if items.checksum:data():uint() ~= expected_checksum then
-        trees.checksum:append_text(format(" [incorrect, expected 0x%x]", expected_checksum))
-        trees.checksum:add_expert_info(PI_CHECKSUM, PI_ERROR, format("Bad checksum. Expected 0x%x", expected_checksum))
+    if items.checksum ~= nil then
+        trees.checksum = items.checksum:add_to_tree(trees.soundweb)
+        
+        local checksum_bytes = ByteArray.new()
+        checksum_bytes:append(items.command:data():bytes())
+        if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+            checksum_bytes:append(items.node:data():bytes())
+            checksum_bytes:append(items.virtual_device:data():bytes())
+            checksum_bytes:append(items.object:data():bytes())
+            checksum_bytes:append(items.state_variable:data():bytes())
+        end
+        checksum_bytes:append(items.data:data():bytes())
+        
+        local expected_checksum = 0x00
+        for i = 0, checksum_bytes:len() - 1 do
+            expected_checksum = bxor(expected_checksum, checksum_bytes:get_index(i))
+        end
+        
+        if items.checksum:data():uint() ~= expected_checksum then
+            trees.checksum:append_text(format(" [incorrect, expected 0x%x]", expected_checksum))
+            trees.checksum:add_expert_info(PI_CHECKSUM, PI_ERROR, format("Bad checksum. Expected 0x%x", expected_checksum))
+        end
     end
     
     items.end_byte = get_soundweb_item(fds.end_byte, 1)
-    trees.end_byte = items.end_byte:add_to_tree(trees.soundweb)
+    if items.end_byte ~= nil then
+        trees.end_byte = items.end_byte:add_to_tree(trees.soundweb)
+    end
     
+    -- ----------
     -- Add labels
-    if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
-        local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
-        trees.address:append_text(hiqnet_address_text)
-        trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
-        table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
-        
-        trees.soundweb:append_text(", SV: 0x" .. tostring(items.state_variable:data()))
-        table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
-    end
-    
-    trees.soundweb:append_text(", Cmd: 0x" .. tostring(items.command:data()))
-    if items.command:has_description() then
-        trees.soundweb:append_text(" (" .. tostring(items.command:description() .. ")"))
-    end
-    table.insert(desc, "Cmd=" .. tostring(items.command:description()))
-    
-    if command_byte == DI_SETSV then
-        -- Append data as level in dB.
-        local db_value = 0
-        local data_value = items.data:data():int()
-        
-        if data_value > -10000 then
-            db_value = data_value / 10000
+    -- ----------
+    if items.start_byte ~= nil then
+        -- Check for valid start byte: 0x02
+        if items.start_byte:data():uint() == 0x02 then
+            trees.start_byte:append_text(" (STX)")
         else
-            db_value = -10 * (10 ^ (abs(data_value + 100000) / 200000))
+            trees.start_byte:append_text(" [incorrect, expected 0x02 STX]")
+            trees.start_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected start byte value 0x02")
         end
-        
-        trees.data:append_text(" (" .. tostring(round(db_value, 2)) .. " dB)")
-    elseif command_byte == DI_SETSVPERCENT or command_byte == DI_BUMPSVPERCENT then
-        -- Append data as percent.
-        trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 2)) .. "%)")
-    elseif command_byte == DI_SUBSCRIBESV or command_byte == DI_SUBSCRIBESVPERCENT then
-        -- Append data as rate in milliseconds.
-        trees.data:append_text(" (" .. tostring(items.data:data():int()) .. " ms)")
-        trees.soundweb:append_text(", Rate: " .. tostring(items.data:data():int()) .. "ms")
-        table.insert(desc, "Rate=" .. tostring(items.data:data():int()) .. "ms")
-    elseif command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
-        if items.data:data():int() == 0 then
-            trees.data:append_text(" (unsubscribe)")
-        end
-    elseif command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
-        -- Append data as preset number.
-        trees.soundweb:append_text(", Preset: " .. tostring(items.data:data():int()))
-        table.insert(desc, "Preset=" .. tostring(items.data:data():int()))
     end
     
-    -- Check for valid end byte: 0x03
-    if items.end_byte:data():uint() == 0x03 then
-        trees.end_byte:append_text(" (ETX)")
-    else
-        trees.end_byte:append_text(" [incorrect, expected 0x03 ETX]")
-        trees.end_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+    if items.command ~= nil then
+        if command_byte ~= DI_VENUE_PRESET_RECALL and command_byte ~= DI_PARAM_PRESET_RECALL then
+            if items.node ~= nil and items.virtual_device ~= nil and items.object ~= nil then
+                local hiqnet_address_text = "0x" .. tostring(items.node:data()) .. tostring(items.virtual_device:data()) .. tostring(items.object:data())
+                trees.address:append_text(hiqnet_address_text)
+                trees.soundweb:append_text(", HiQnet Address: " .. hiqnet_address_text)
+                table.insert(desc, "HiQnet Address=" .. hiqnet_address_text)
+            end
+            
+            if items.state_variable ~= nil then
+                trees.soundweb:append_text(", SV: 0x" .. tostring(items.state_variable:data()))
+                table.insert(desc, "SV=0x" .. tostring(items.state_variable:data()))
+            end
+        end
+        
+        trees.soundweb:append_text(", Cmd: 0x" .. tostring(items.command:data()))
+        if items.command:has_description() then
+            trees.soundweb:append_text(" (" .. tostring(items.command:description() .. ")"))
+        end
+        table.insert(desc, "Cmd=" .. tostring(items.command:description()))
+    end
+    
+    if items.data ~= nil then
+        if command_byte == DI_SETSV then
+            -- Append data as level in dB.
+            local db_value = 0
+            local data_value = items.data:data():int()
+            
+            if data_value > -10000 then
+                db_value = data_value / 10000
+            else
+                db_value = -10 * (10 ^ (abs(data_value + 100000) / 200000))
+            end
+            
+            trees.data:append_text(" (" .. tostring(round(db_value, 2)) .. " dB)")
+        elseif command_byte == DI_SETSVPERCENT or command_byte == DI_BUMPSVPERCENT then
+            -- Append data as percent.
+            trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 2)) .. "%)")
+        elseif command_byte == DI_SUBSCRIBESV or command_byte == DI_SUBSCRIBESVPERCENT then
+            -- Append data as rate in milliseconds.
+            trees.data:append_text(" (" .. tostring(items.data:data():int()) .. " ms)")
+            trees.soundweb:append_text(", Rate: " .. tostring(items.data:data():int()) .. "ms")
+            table.insert(desc, "Rate=" .. tostring(items.data:data():int()) .. "ms")
+        elseif command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
+            if items.data:data():int() == 0 then
+                trees.data:append_text(" (unsubscribe)")
+            end
+        elseif command_byte == DI_VENUE_PRESET_RECALL or command_byte == DI_PARAM_PRESET_RECALL then
+            -- Append data as preset number.
+            trees.soundweb:append_text(", Preset: " .. tostring(items.data:data():int()))
+            table.insert(desc, "Preset=" .. tostring(items.data:data():int()))
+        end
+    end
+    
+    if items.end_byte ~= nil then
+        -- Check for valid end byte: 0x03
+        if items.end_byte:data():uint() == 0x03 then
+            trees.end_byte:append_text(" (ETX)")
+        else
+            trees.end_byte:append_text(" [incorrect, expected 0x03 ETX]")
+            trees.end_byte:add_expert_info(PI_PROTOCOL, PI_ERROR, "Expected end byte value 0x03")
+        end
     end
     
     -- Info column
     pinfo.cols.protocol = "Soundweb"
     pinfo.cols.info = table.concat(desc, " ")
+    
+    if err.packet_too_short == true then
+        pinfo.cols.info = "[UNEXPECTED END OF PACKET]"
+        trees.soundweb:set_text(soundweb_proto.description .. ", [Unexpected end of packet]")
+        local err = trees.soundweb:add("[Unexpected end of packet: Packet too short]")
+        err:add_expert_info(PI_MALFORMED, PI_ERROR, "Unexpected end of packet: Packet too short")
+    end
     
     -- Return the number of bytes consumed from tvb.
     return offset
