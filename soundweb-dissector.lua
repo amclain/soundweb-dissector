@@ -93,8 +93,9 @@ fds.state_variable = ProtoField.new("State Variable", "soundweb.state_variable",
 fds.data           = ProtoField.new("Data", "soundweb.data", ftypes.INT32, nil, base.DEC)
 fds.checksum       = ProtoField.new("Checksum", "soundweb.checksum", ftypes.UINT8, nil, base.HEX)
 
--- For Wireshark coloring rules. True if there is a problem with the packet.
-fds.error          = ProtoField.new("Error", "soundweb.error", ftypes.BOOLEAN)
+-- Errors
+fds.error          = ProtoField.new("Error", "soundweb.error", ftypes.BOOLEAN) -- For Wireshark coloring rules. True if there is a problem with the packet.
+fds.error_unexpected_data = ProtoField.new("Unexpected data after end of packet", "soundweb.error_unexpected_data", ftypes.BYTES)
 
 local tcp_stream_id = Field.new("tcp.stream")
 local subdissectors = DissectorTable.new("soundweb.protocol", "Soundweb", ftypes.STRING)
@@ -495,7 +496,7 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
         
         pinfo.cols.info = tostring(pinfo.cols.info) .. " " .. string.upper(bracket_msg)
         trees.soundweb:append_text(" " .. bracket_msg)
-        local err = trees.soundweb:add(bracket_msg)
+        local err = trees.soundweb:add(fds.error_unexpected_data, tvb(offset, tvb:len() - offset))
         err:add_expert_info(PI_MALFORMED, PI_ERROR, msg)
         set_soundweb_error(err)
     end
