@@ -449,10 +449,16 @@ function soundweb_proto.dissector(tvb, pinfo, tree)
             -- Append data as percent.
             trees.data:append_text(" (" .. tostring(round(items.data:data():int() / 65536, 2)) .. "%)")
         elseif command_byte == DI_SUBSCRIBESV or command_byte == DI_SUBSCRIBESVPERCENT then
-            -- Append data as rate in milliseconds.
-            trees.data:append_text(" (" .. tostring(items.data:data():int()) .. " ms)")
-            trees.soundweb:append_text(", Rate: " .. tostring(items.data:data():int()) .. "ms")
-            table.insert(desc, "Rate=" .. tostring(items.data:data():int()) .. "ms")
+            -- London DI Kit.pdf
+            -- Page 21
+            if items.data:data():uint() == 0 then
+                trees.data:append_text(" (subscribe to non-meter control)")
+            else
+                -- Append data as rate in milliseconds. Only applies to indicators and meters.
+                trees.data:append_text(" (" .. tostring(items.data:data():int()) .. " ms) (subscribe to meter)")
+                trees.soundweb:append_text(", Rate: " .. tostring(items.data:data():int()) .. "ms")
+                table.insert(desc, "Rate=" .. tostring(items.data:data():int()) .. "ms")
+            end
         elseif command_byte == DI_UNSUBSCRIBESV or command_byte == DI_UNSUBSCRIBESVPERCENT then
             if items.data:data():int() == 0 then
                 trees.data:append_text(" (unsubscribe)")
