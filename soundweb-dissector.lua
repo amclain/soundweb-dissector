@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 -- BSS Soundweb London Wireshark Dissector
--- v0.1.0
+-- v1.0
 --------------------------------------------------------------------------------
 -- London Architect available from:
 -- http://www.bssaudio.co.uk/en-US/softwares
