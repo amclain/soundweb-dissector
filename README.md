@@ -4,6 +4,25 @@
 ![BSS Soundweb London Protocol Wireshark Dissector Screenshot](screenshot.png)
 
 
+## Download
+
+**Git Users:**
+
+https://github.com/amclain/soundweb-dissector
+
+
+**Mercurial Users:**
+
+https://bitbucket.org/amclain/soundweb-dissector
+
+
+**Zip File:**
+
+Both sites above offer a feature to download the source code as a zip file.
+Any [stable release](https://github.com/amclain/soundweb-dissector/releases),
+as well as the current development snapshot can be downloaded.
+
+
 ## Installation
 
 This plugin was tested with Wireshark `1.12.1`.
