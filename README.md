@@ -52,7 +52,7 @@ Ruby 2.1 or higher is required to run the scripts that generate the packet
 captures in the `sample_data` directory. Ruby can be obtained via the
 [RubyInstaller](http://rubyinstaller.org/downloads/) for Windows, or
 [rbenv](https://github.com/sstephenson/rbenv) for Linux. If installing on
-Windows, make sure Ruby is in your [system path](http://www.computerhope.com/issues/ch000549.htm).
+Windows, make sure the `ruby/bin` directory is in your [system path](http://www.computerhope.com/issues/ch000549.htm).
 
 Once Ruby is installed, open the [command prompt](http://windows.microsoft.com/en-us/windows-vista/open-a-command-prompt-window)
 and execute the following commands:
