@@ -25,7 +25,8 @@ as well as the current development snapshot can be downloaded.
 
 ## Installation
 
-This plugin was tested with Wireshark `1.12.1`.
+This plugin was tested with [Wireshark](https://www.wireshark.org/download.html)
+`1.12.1`.
 
 Copy `soundweb-dissector.lua` to `%APPDATA%\Wireshark\plugins` on Windows, or
 `~/.wireshark/plugins` on Linux. For development, clone this repository to the
